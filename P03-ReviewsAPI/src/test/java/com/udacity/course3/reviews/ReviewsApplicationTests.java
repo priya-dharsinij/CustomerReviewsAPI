@@ -9,7 +9,9 @@ import com.udacity.course3.reviews.repository.ProductRepository;
 import com.udacity.course3.reviews.repository.ReviewRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.data.mongo.AutoConfigureDataMongo;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.Sort;
 
 import javax.persistence.EntityManager;
 import java.math.BigDecimal;
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 @DataJpaTest
+@AutoConfigureDataMongo
 public class ReviewsApplicationTests {
 
 	@Autowired
@@ -33,6 +36,7 @@ public class ReviewsApplicationTests {
 	ReviewRepository reviewRepository;
 	@Autowired
 	CommentRepository commentRepository;
+
 
 	@Test
 	public void injectedComponentsAreNotNull(){
@@ -92,6 +96,40 @@ public class ReviewsApplicationTests {
 		assertEquals("john",reviewList.get(1).getUserName());
 	}
 
+	@Test
+	public void testSortedListReviewsForProduct(){
+
+		Product newProduct = createTestProduct("All-New Fire HD 8", BigDecimal.valueOf(40.00),4);
+		entityManager.persist(newProduct);
+
+
+		entityManager.persist(createTestReview(newProduct, "john", "user2@gmail.com",2,"Very slow"));
+		entityManager.persist(createTestReview(newProduct, "tester", "mytesting@gmail.com",5,"Basic Tablet with Great Value"));
+
+
+		List<Review> reviewList = reviewRepository.findByProductId(newProduct.getId(), Sort.by("rating").descending());
+		assertEquals(5,reviewList.get(0).getRating());
+		assertEquals("john",reviewList.get(1).getUserName());
+	}
+
+	@Test
+	public void testListReviewsForProductAndRating(){
+
+		Product newProduct = createTestProduct("All-New Fire HD 8", BigDecimal.valueOf(40.00),4);
+		entityManager.persist(newProduct);
+
+
+		entityManager.persist(createTestReview(newProduct, "john", "user2@gmail.com",2,"Very slow"));
+		entityManager.persist(createTestReview(newProduct, "tester", "mytesting@gmail.com",3,"Basic Tablet with Great Value"));
+		entityManager.persist(createTestReview(newProduct, "tester1", "mytesting1@gmail.com",5,"Love it!"));
+		entityManager.persist(createTestReview(newProduct, "tester2", "mytesting2@gmail.com",3,"Not as good as the last version"));
+
+		List<Review> reviewList = reviewRepository.findByProductIdAndRating(newProduct.getId(), 3);
+		assertEquals(3,reviewList.get(0).getRating());
+		assertEquals(2,reviewList.size());
+	}
+
+
 
 	@Test
 	public void testCreateCommentForReview(){
@@ -117,14 +155,13 @@ public class ReviewsApplicationTests {
 		Review newReview = createTestReview(newProduct, "tester", "mytesting@gmail.com",5,"Love it!");
 		entityManager.persist(newReview);
 
-		Comment newComment1 = createTestComment(newReview,"reviewer1","kshan@gmail.com");
-		Comment newComment2 = createTestComment(newReview,"reviewer2","jane23@gmail.com");
-		entityManager.persist(newComment1);
-		entityManager.persist(newComment2);
+		entityManager.persist(createTestComment(newReview,"reviewer1","kshan@gmail.com"));
+		entityManager.persist(createTestComment(newReview,"reviewer2","jane23@gmail.com"));
+		entityManager.persist(createTestComment(newReview,"reviewer3","shalini@gmail.com"));
 
-		List<Comment> commentList = commentRepository.findByReviewId(newReview.getId());
-		assertEquals("reviewer1",commentList.get(0).getUserName());
-		assertEquals("reviewer2",commentList.get(1).getUserName());
+
+		List<Comment> commentList = commentRepository.findByReviewId(newReview.getId(),Sort.by("created").descending());
+		assertEquals("reviewer3",commentList.get(0).getUserName());
 
 	}
 
